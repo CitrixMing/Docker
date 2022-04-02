@@ -1,7 +1,7 @@
 
 $ docker run -d --name=rancher --restart=unless-stopped -p 8080:8080 rancher/server
 $ docker run -p 80:80 -p 443:443 --name=rancher --privileged --restart=unless-stopped -d rancher/rancher:v2.5-head
-   $docker logs -f rancher
+   $ docker logs -f rancher
    $ docker inspect rancher|grep IPAddres
 
 $ docker run -d --name=tomcat -p 4030:8080 tomcat
