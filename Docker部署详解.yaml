@@ -1,0 +1,181 @@
+
+$ docker run -d --name=rancher --restart=unless-stopped -p 8080:8080 rancher/server
+$ docker run -p 80:80 -p 443:443 --name=rancher --privileged --restart=unless-stopped -d rancher/rancher:v2.5-head
+   $docker logs -f rancher
+   $ docker inspect rancher|grep IPAddres
+
+$ docker run -d --name=tomcat -p 4030:8080 tomcat
+  $ docker exec -it tomcat /bin/bash
+  $ ls -l
+  $/usr/local/tomcat# rm -rf webapps
+  $/usr/local/tomcat# mv webapps.dist webapps
+
+$ docker run -d --name=nginx -p 40:80 nginx
+  $ docker exec -it tomcat /bin/sh
+
+$ docker run -d --name=portainer -p 9000:9000 --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v /mnt/docker/portainer:/data portainer/portainer
+
+@@@@@@@@@在Portainer中部署mysql@@@@@@@@@
+1、Images拉取mysql镜像：docker pull mysql
+2、Containers添加mysql容器
+   设置3306:3306
+   Env设置 MYSQL_ROOT_PASSWORD root。部署容器
+3、$ docker exec -it mysql /bin/bash 进入mysql容器  
+      mysql -u root -p
+      mysql> show databases;
+      mysql> use mysql
+      mysql> show tables;
+ 4、$ exit  //退出
+
+$ docker run -d --name=jenkins -p 8081:8080 jenkins/jenkins
+  $ docker exec -it jenkins /bin/bash
+  $ cd /var/jenkins_home/secrets
+  $ ls -l
+  $ cat initialAdminPassword
+进入/var/jenkins_home/secrets/initialAdminPassword复制密码
+浏览器访问 https://localhost:8081
+
+$ docker run -d --name=grafana -p 3000:3000 grafana/grafana:7.2.2
+  $ docker exec -it grafana /bin/bash
+注意grafana:7.2.2以下版本部署完成浏览器可能无法访问
+
+
+------部署mysql------
+$ docker images|grep mysql
+$ docker run -d --name=mysql -p 3307:3306 -e MYSQL_ROOT_PASSWORD=root mysql
+$ docker exec -it mysql /bin/bash 进入mysql容器
+  mysql -u root -p
+  mysql> show databases;
+  mysql> use mysql
+  mysql> show tables;
+
+-d表示在后台运行，不随当前命令行窗口的退出而退出
+--name给容器起一个别名，以后可以通过这个别名管理此容器
+-p 3307：3307把宿主机的3307端口映射到Mysql容器的3306端口 
+-e MySQL容器的环境配置
+MYSQL_ROOT_PASSWORD=123456 指定mysql的密码，用户名默认为root，注意如果没有指定密码，会启动失败
+
+------部署开源ghost博客------
+$ docker run -d --name my-ghost -p 2368:2368 ghost
+  ---页面源码
+  /var/lib/ghost/content.orig/themes/casper
+--------------------------------------
+1、创建配置和数据目录
+  在本机创建目录用于存储mysql的配置和数据。
+    配置文件目录：~/docker/conf/mysql
+    数据文件目录：~/docker/data/mysql
+2、拉取mysql镜像
+   $ docker pull mysql
+
+3、从镜像内复制配置文件到宿主机
+   镜像内部配置文件存放在/etc/mysql目录下，临时创建容器复制配置文件目录到本机~/docker/conf/目录
+    # 创建名为mysql的容器
+     $ docker run --name mysql -e MYSQL_ROOT_PASSWORD=crane -d mysql
+
+   # 复制docker容器内配置文件到本地~/docker/conf/mysql目录
+     $ docker cp mysql:/etc/mysql /Users/crane/docker/conf/
+
+   # 停止并删除临时容器
+     $ docker stop mysql
+     $ docker rm mysql
+
+4 创建并运行mysql容器
+  挂载宿机配置和数据文件目录到docker容器内部，终端执行如下命令
+    # ~/docker/conf/mysql目录下为mysql配置文件
+    # ~/docker/data/mysql目录下为mysql数据文件
+    # 本机的3306和33060端口分别映射docker内部的3306和33060端口
+    # 数据库root密码为crane
+    # -d后台运行docker
+    $ docker run --name mysql -v ~/docker/conf/mysql:/etc/mysql/conf.d -v ~/docker/data/mysql:/var/lib/mysql -p 3306:3306 -p 33060:33060 -e MYSQL_ROOT_PASSWORD=crane -d mysql
+
+5、宿主机连接数据库
+   容器启动成功后，在宿主机终端执行以下命令连接数据库
+    # 输入以下命令后回车，输入数据库密码crane
+      mysql -uroot -p --protocol=tcp
+
+
+---删除所有拉取的镜像：
+$ docker rmi $(docker images -a -q)
+
+---删除所有已经停止的容器：
+# docker rm $(docker ps -a -q)
+
+
+------部署MySQL数据库------
+$ docker volume create mysql-volume
+$ docker volume ls
+$ docker run --name=tns_mysql -p 3306:3306 -v mysql-volume:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=PWORD -d mysql/mysql-server
+
+$ docker volume create phpmyadmin-volume 
+$ docker run --name tns-phpmyadmin -v phpmyadmin-volume:/etc/phpmyadmin/config.usr.inc.php --link tns_mysl:db -p 82:80 -d phpmyadmin/phphpmyadmin
+
+
+$ docker run -it ubuntu /bin/bash  //执行后会进入容器内，exit退出。容器会停止
+参数说明：
+  -i: 交互式操作。
+  -t: 终端。
+  ubuntu: ubuntu 镜像。
+  /bin/bash：放在镜像名后的是命令，这里我们希望有个交互式 Shell，
+             因此用的是 /bin/bash后台运行一个容器
+  -d指定容器的运行模式
+  $ docker run -itd --name ubuntu-test ubuntu /bin/bash   //容器busybox会运行，不会进入容器内
+【注：加了-d参数默认不会进入容器，想要进入容器需要使用指令docker exec。】
+
+4.进入容器
+在使用 -d 参数时，容器启动后会进入后台。此时想要进入容器，可以通过以下指令进入：
+  docker attach ：不推荐，如果从这个容器退出，会导致容器的停止。
+  docker exec：推荐，因为此退出容器终端，不会导致容器的停止。
+ $docker exec -it fb9a6c5fd07d /bin/bash
+
+ -d:让容器在后台运行。
+ -P:将容器内部使用的网络端口映射到我们使用的主机上。
+
+---docker search
+NAME: 镜像仓库源的名称
+DESCRIPTION: 镜像的描述
+OFFICIAL: 是否 docker 官方发布
+stars: 类似 Github 里面的 star，获赞数
+AUTOMATED: 自动构建
+
+
+------部署haorbor-----
+1、下载harbor
+$ wget https://github.com/goharbor/harbor/releases/download/v2.1.0/harbor-offline-installer-v2.1.0.tgz
+
+2、解压harbor压缩包
+$ tar -xvf harbor-offline-installer-v2.1.0.tgz 
+$ tar zxvf harbor-offline-installer-v2.1.0.tgz 
+
+3、拷贝配置文件
+$ cd harbor/
+$ cp harbor.yml.tmpl harbor.yml
+
+4、修改harbor.yml
+需要修改内容
+   hostname = 本机IP地址                   # 修改连接地址，可以是域名，ip
+   harbor_admin_password = Harbor123456          # 配置密码
+
+---下载离线包
+$ wget https://github.com/goharbor/harbor/releases/download/v1.2.0/harbor-offline-installer-v1.2.0.tgz
+
+# yum -y install python-pip
+# pip install --upgrade pip
+# pip -V
+pip 9.0.1 from /usr/lib/python2.7/site-packages (python 2.7)
+# pip install docker-compose
+# docker-compose version
+
+$ tar -zxvf harbor-offline-installer-v1.2.0.tgz
+$ cd harbor
+$ docker load -i harbor.v1.2.0.tar.gz
+$ docker images
+
+pip --version # Python2.x 版本命令
+pip3 --version # Python3.x 版本命令
+
+如果提示大家未安装的话，可以用下面的命令来安装pip：
+   $ curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py # 下载安装脚本
+   $ sudo python get-pip.py # 运行安装脚本
+      注意：用哪个版本的 Python 运行安装脚本，pip 就被关联到哪个版本，如果是 Python3 则执行以下命令：
+   $ sudo python3 get-pip.py    # 运行安装脚本。
+
